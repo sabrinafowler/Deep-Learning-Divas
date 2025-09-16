@@ -8,5 +8,6 @@ CSCE 479/879 group work for Sabrina Fowler, Grace Hecke, Abby Veiman, Derek DeBl
 - Architecture 1 with hyperparameters B without regularizer
 - Architecture 2 with hyperparameters C and regularizer
 - Architecture 2 with hyperparameters C without regularizer
-- Architecture 2 with hyperparameters C and regularizer
-- Architecture 2 with hyperparameters C without regularizer
+- Architecture 2 with hyperparameters D and regularizer
+- Architecture 2 with hyperparameters D without regularizer
+
