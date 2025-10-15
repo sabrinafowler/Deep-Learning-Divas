@@ -27,13 +27,6 @@ Process overview:
         │    ├── images + val.csv
         └── test/
              ├── images + test.csv
-
-Usage:
-1. Make sure you have Python 3.8+ and install the required packages:
-       pip install datasets pandas scikit-learn tqdm
-2. Run this script:
-       python preprocess_nuswide10k.py
-3. The resulting dataset will appear in the `nuswide10k/` directory.
 '''
 
 # 1. Load dataset
@@ -101,3 +94,4 @@ for split, df_split in splits.items():
     pd.DataFrame(rows).to_csv(os.path.join(base_dir, f"{split}.csv"), index=False)
 
 print("Stratified dataset saved under:", base_dir)
+
