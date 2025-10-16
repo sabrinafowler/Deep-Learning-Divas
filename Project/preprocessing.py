@@ -56,7 +56,7 @@ def download_dataset():
     print("Dataset downloaded and extracted.")
 
 
-# ---------------- Preprocess ---------------- #
+# Preprocess
 def preprocess_nuswide10k():
     """Builds the NUS-WIDE-10k subset and saves CSVs ready for training."""
     concepts_path = DATA_ROOT / "ConceptsList/Concepts81.txt"
@@ -137,7 +137,7 @@ def preprocess_nuswide10k():
     print("Finished building NUS-WIDE-10k (PyTorch/TensorFlow ready).")
 
 
-# ---------------- Run ---------------- #
+# Run
 if __name__ == "__main__":
     download_dataset()
     preprocess_nuswide10k()
