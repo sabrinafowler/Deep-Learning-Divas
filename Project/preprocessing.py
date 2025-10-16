@@ -1,97 +1,143 @@
 import os
-from datasets import load_dataset
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["OMP_NUM_THREADS"] = "1"
+
+import zipfile
+import shutil
+from pathlib import Path
 import pandas as pd
+import numpy as np
+import json
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
-'''
-This script creates the NUS-WIDE-10k dataset subset from the full NUS-WIDE
-dataset hosted on Hugging Face (https://huggingface.co/datasets/Lxyhaha/NUS-WIDE).
+from kaggle.api.kaggle_api_extended import KaggleApi
 
-It automatically downloads the dataset if it is not already cached locally.
+"""
+This script:
+- Downloads the Kaggle NUS-WIDE dataset incrementally to avoid memory issues.
+- Builds the NUS-WIDE-10k subset (10 categories x 1000 images each, single-label only).
+- Merges in the 81 concept tags for each image.
+- Performs stratified train/val/test splits (80/10/10).
+- Generates CSVs with:
+    image_path, category, category_idx, and tag_* columns.
+- Creates label_map.json for model loading.
+"""
 
-Process overview:
-1. Loads the NUS-WIDE dataset from Hugging Face using the `datasets` library.
-2. Identifies the 10 most frequent categories (labels).
-3. Randomly samples 1000 image–text pairs from each of those categories,
-   ensuring each instance belongs to only one category.
-4. Performs a stratified split:
-      - 8000 samples for training
-      - 1000 samples for validation
-      - 1000 samples for testing
-   maintaining equal category proportions in each split.
-5. Saves all images and their metadata into:
-      nuswide10k/
-        ├── train/
-        │    ├── images + train.csv
-        ├── val/
-        │    ├── images + val.csv
-        └── test/
-             ├── images + test.csv
-'''
+# Config
+KAGGLE_DATASET = "xinleili/nuswide"
+DATA_ROOT = Path("/work/cse479/sfowler14/rawData")
+OUT_ROOT = Path("nuswide10k_ready")
+SAMPLES_PER_CLASS = 1000
+RANDOM_SEED = 42
+SPLITS = {"train": 0.8, "val": 0.1, "test": 0.1}
 
-# 1. Load dataset
-dataset = load_dataset("Lxyhaha/NUS-WIDE", split="train")
-df = pd.DataFrame(dataset)
+np.random.seed(RANDOM_SEED)
 
-# 2. Expand multi-label rows and count category frequencies
-df_exploded = df.explode('labels')
-label_counts = df_exploded['labels'].value_counts()
+# Download
+def download_dataset():
+    """Download Kaggle dataset safely (no unzip until needed)."""
+    if (DATA_ROOT / "Flickr").exists():
+        print("Dataset already exists, skipping download.")
+        return
 
-# 3. Select top 10 categories
-top_10_labels = label_counts.head(10).index.tolist()
-print("Top 10 categories:", top_10_labels)
+    DATA_ROOT.mkdir(parents=True, exist_ok=True)
+    api = KaggleApi()
+    api.authenticate()
+    print(f"Downloading {KAGGLE_DATASET} ...")
+    zip_path = api.dataset_download_files(KAGGLE_DATASET, path=DATA_ROOT, unzip=False)
+    zip_file = Path(zip_path)
 
-# 4. Filter and ensure unique image–text pairs
-df_filtered = df_exploded[df_exploded['labels'].isin(top_10_labels)]
-df_filtered = df_filtered.drop_duplicates(subset=['image', 'text'])
+    # Incremental unzip to avoid memory overflow
+    print("Extracting dataset incrementally...")
+    with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+        for member in tqdm(zip_ref.infolist(), desc="Unzipping"):
+            zip_ref.extract(member, DATA_ROOT)
+    zip_file.unlink()
+    print("Dataset downloaded and extracted.")
 
-# 5. Randomly sample 1000 per category (reproducibly)
-dfs = []
-for label in top_10_labels:
-    subset = df_filtered[df_filtered['labels'] == label]
-    subset_sampled = subset.sample(n=min(1000, len(subset)), random_state=42)
-    dfs.append(subset_sampled)
 
-df_10k = pd.concat(dfs, ignore_index=True)
-print("Final subset size:", len(df_10k))
+# ---------------- Preprocess ---------------- #
+def preprocess_nuswide10k():
+    """Builds the NUS-WIDE-10k subset and saves CSVs ready for training."""
+    concepts_path = DATA_ROOT / "ConceptsList/Concepts81.txt"
+    label_dir = DATA_ROOT / "Groundtruth/AllLabels"
+    image_dir = DATA_ROOT / "Flickr"
+    tags_file = DATA_ROOT / "NUS_WID_Tags/AllTags81.txt"
 
-# 6. Stratified split into train/val/test: 80% / 10% / 10%
-train_df, temp_df = train_test_split(
-    df_10k,
-    test_size=0.2,
-    stratify=df_10k['labels'],
-    random_state=42
-)
-val_df, test_df = train_test_split(
-    temp_df,
-    test_size=0.5,
-    stratify=temp_df['labels'],
-    random_state=42
-)
+    # Load concept names
+    concepts = [line.strip() for line in open(concepts_path, encoding="utf-8").readlines()]
+    print(f"Loaded {len(concepts)} concepts.")
 
-splits = {"train": train_df, "val": val_df, "test": test_df}
-print(f"Train: {len(train_df)}, Val: {len(val_df)}, Test: {len(test_df)}")
+    # Load labels and tags
+    label_files = sorted(label_dir.glob("Labels_*.txt"))
+    all_labels = [np.loadtxt(f, dtype=int) for f in tqdm(label_files, desc="Loading labels")]
+    labels_matrix = np.vstack(all_labels).T
+    tags_matrix = np.loadtxt(tags_file, dtype=int)
+    assert tags_matrix.shape[0] == labels_matrix.shape[0], "Tag count mismatch."
 
-# 7. Make output folders
-base_dir = "nuswide10k"
-os.makedirs(base_dir, exist_ok=True)
-for split in splits:
-    os.makedirs(os.path.join(base_dir, split), exist_ok=True)
+    # Associate images
+    image_files = sorted(image_dir.glob("*.jpg"))
+    assert len(image_files) == labels_matrix.shape[0], "Image count and labels mismatch."
 
-# 8. Save images and metadata
-for split, df_split in splits.items():
-    print(f"Saving {split} images...")
-    image_dir = os.path.join(base_dir, split)
-    rows = []
-    for i, row in tqdm(df_split.iterrows(), total=len(df_split)):
-        image = row['image']  # PIL image
-        label = row['labels']
-        text = row['text']
-        filename = f"{split}_{i:05d}.jpg"
-        image.save(os.path.join(image_dir, filename))
-        rows.append({"filename": filename, "text": text, "label": label})
+    # Build DataFrame
+    df = pd.DataFrame(labels_matrix, columns=concepts)
+    df["image_path"] = [str(p) for p in image_files]
+    df["num_labels"] = df[concepts].sum(axis=1)
 
-    pd.DataFrame(rows).to_csv(os.path.join(base_dir, f"{split}.csv"), index=False)
+    # Add tag columns
+    tag_df = pd.DataFrame(tags_matrix, columns=[f"tag_{c}" for c in concepts])
+    df = pd.concat([df, tag_df], axis=1)
 
-print("Stratified dataset saved under:", base_dir)
+    # Filter single-label images
+    df_single = df[df["num_labels"] == 1].copy()
 
+    # Select top 10 most common classes
+    label_counts = df_single[concepts].sum().sort_values(ascending=False)
+    top10 = label_counts.head(10).index.tolist()
+    print("Top 10 categories:", top10)
+
+    # Sample 1000 per class
+    samples = []
+    for c in top10:
+        subset = df_single[df_single[c] == 1]
+        samples.append(subset.sample(min(len(subset), SAMPLES_PER_CLASS), random_state=RANDOM_SEED))
+    df_subset = pd.concat(samples).reset_index(drop=True)
+    df_subset["category"] = df_subset[top10].idxmax(axis=1)
+
+    # Encode category indices for model training
+    label_map = {label: i for i, label in enumerate(top10)}
+    df_subset["category_idx"] = df_subset["category"].map(label_map)
+
+    # Stratified splits
+    train_df, temp_df = train_test_split(
+        df_subset, test_size=(1 - SPLITS["train"]),
+        stratify=df_subset["category"], random_state=RANDOM_SEED
+    )
+    val_df, test_df = train_test_split(
+        temp_df, test_size=SPLITS["test"] / (SPLITS["val"] + SPLITS["test"]),
+        stratify=temp_df["category"], random_state=RANDOM_SEED
+    )
+
+    # Save images and CSVs
+    splits = {"train": train_df, "val": val_df, "test": test_df}
+    for split, df_split in splits.items():
+        split_dir = OUT_ROOT / split / "images"
+        split_dir.mkdir(parents=True, exist_ok=True)
+        for _, row in tqdm(df_split.iterrows(), total=len(df_split), desc=f"Copying {split}"):
+            dst = split_dir / Path(row["image_path"]).name
+            if not dst.exists():
+                shutil.copy(row["image_path"], dst)
+        df_split["image_path"] = df_split["image_path"].apply(lambda p: str(Path("images") / Path(p).name))
+        df_split.to_csv(OUT_ROOT / split / f"{split}.csv", index=False)
+
+    # Save label map for easy loading
+    with open(OUT_ROOT / "label_map.json", "w") as f:
+        json.dump(label_map, f, indent=2)
+
+    print("Finished building NUS-WIDE-10k (PyTorch/TensorFlow ready).")
+
+
+# ---------------- Run ---------------- #
+if __name__ == "__main__":
+    download_dataset()
+    preprocess_nuswide10k()
