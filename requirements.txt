@@ -4,3 +4,4 @@ seaborn
 tensorflow
 tensorflow_datasets
 scikit-learn
+torch
