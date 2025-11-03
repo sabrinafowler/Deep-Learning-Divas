@@ -5,3 +5,5 @@ tensorflow
 tensorflow_datasets
 scikit-learn
 torch
+torchvision
+transformers
