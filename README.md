@@ -43,7 +43,6 @@ __Deliverables:__
 
 ### Summary of early November experiments:
 #### CorrAE with MSE alignment loss
-
 best model at epoch 39
 
 Validation Set Metrics:
@@ -59,7 +58,6 @@ Test Set Metrics:
 - MedianRank: 42.0000
 
 #### CorrAE with contrastive alignment loss
-
 best model at epoch 40
 
 Validation Set Metrics:
@@ -75,7 +73,6 @@ Test Set Metrics:
 - MedianRank: 30.0000
 
 #### Cross-Modal Architecture
-
 best model at epoch 12
 
 Validation Set Metrics:
