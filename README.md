@@ -10,6 +10,7 @@ Model specifications were:
 - For each of architecture, use Adam to optimize the parameters 
 - For each training run,  use at least two sets of hyperparameters
 - Choose at least one regularizer and evaluate system performance with and without it
+
 __Deliverables:__ 
 1. A single, well written report (in pdf format) discussing results. The pdf should include the experimental setup, results, and conclusions.
 2. Three program files, with the following names:
@@ -24,6 +25,7 @@ The assignment for Homework 2 was to apply convolutional neural networks to the 
 - For each architecture, choose an optimizer
 - For each training run use at least two sets of hyperparameters
 - Choose a regularizer, in addition to early stopping with a minimum patience hyperparameter value of 5
+
 __Deliverables:__
 1. A single, well written report (in pdf format) discussing results. The pdf should include the experimental setup, results, and conclusions.
 2. Three program files, with the following names:
