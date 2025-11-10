@@ -34,6 +34,16 @@ __Deliverables:__
     - model.py: TensorFlow code that defines the network
     - util.py: Helper functions (e.g., for loading the data, small repetitive functions)
 
+## Homework 3: Sentiment Analysis with Sequential Models
+The assignment for Homework 3 was to apply sequential neural network models to the problem of sentiment analysis on the IMDB dataset, which consists of 50,000 reviews labeled as positive or negative. In particular to design and implement at least two sequential architectures; for each architecture use an attention mechanism and a regularizer, and try at least two settings of hyperparameter values. We were required to employ early stopping in your training, with a minimum patience hyperparameter value of 5.
+
+__Deliverables:__
+1. A single, well written report (in pdf format) discussing results. The pdf should include the experimental setup, results, and conclusions.
+2. Three program files, with the following names:
+    - main.py: Code that runs the main loop of training the TensorFlow models
+    - model.py: TensorFlow code that defines the network
+    - util.py: Helper functions (e.g., for loading the data, small repetitive functions)
+
 ## Project Notes
 ### Notebooks:
 - `Feature_Extraction_Batch(1).ipynb`: Derek's original feature extraction and first pass at CorrAE
