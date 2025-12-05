@@ -1,0 +1,210 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{xcolor}
+\usepackage{url}
+\usepackage[nottoc]{tocbibind}
+\usepackage{graphicx}
+\usepackage[bottom]{footmisc}
+\usepackage{tikz}
+\usepackage{amsmath}
+\usepackage{import}
+\subimport{./layers/}{init}
+\usetikzlibrary{positioning}
+\usepackage{subfig}
+\usepackage{float}
+
+\def\ConvColor{rgb:yellow,5;red,2.5;white,5}
+\def\ConvReluColor{rgb:yellow,5;red,5;white,5}
+\def\PoolColor{rgb:red,1;black,0.3}
+\def\DcnvColor{rgb:blue,5;green,2.5;white,5}
+\def\SoftmaxColor{rgb:magenta,5;black,7}
+\def\InputColor{rgb:blue,2;green,1;white,5}
+\def\DropoutColor{rgb:gray,3;white,2}
+\def\FcColor{rgb:blue,5;red,2.5;white,5}
+\def\FcReluColor{rgb:blue,5;red,5;white,4}
+
+
+\title{CSCE 479/879 Homework 2: Convolutional Architectures and CIFAR-100}
+\author{Derek DeBlieck, Sabrina Fowler, Grace Hecke, Abby Veiman}
+%\date{January 2021}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+    %This is the template you are required to use for each of your homework reports.  It resembles the format of a machine learning research paper, except for the lack of a  related work section. 
+    %At this spot in your report, you should place a brief abstract (4--6 sentences). This is a high-level summary of your work, including a brief summary of the problem, motivation, and your results.
+Image classification is a classic problem in computer vision. We trained two distinct convolutional architectures, each with two distinct sets of hyperparameters, on the CIFAR-100 dataset. All four of these classifiers perform well, with the best performing model attaining a top-1 accuracy score of 56\%. Differences in model performance are discussed, and future research questions raised.
+    
+%{\bf Do not cite any sources in the Abstract, since it is supposed to be self-contained (i.e., it might appear on its own without the References section).}
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+% Here you should give a high-level overview of the problem you worked on for this assignment, your method(s), and a summary of your results.  
+
+%  problem overview
+For this assignment we developed convolutional neural networks to classify images from the CIFAR-100 dataset. This dataset consists of 100 classes, many of which are similar to each other, e.g. `beetle' and `cockroach'. \cite{Krizhevsky2009LearningML} Therefore we needed to train models more complex than those we have worked with so far.
+
+% methods overview
+We tested out two different CNN architectures, and for each we varied the optimizer, learning rate, $L_2$-regularization, and dropout rate. The two architectures varied by number and depth of convolutional blocks.
+
+% results summary
+Overall, our four models performed relatively well. Both of our shallower CNNs performed virtually identically on top-1 and top-5 accuracy. Our deeper CNNs had more variance in their performance, with one performing worse than the shallower ones and the other performing better. 
+
+\section{Problem Description}
+
+% Describe  the problem you worked on, including specifically what the learning problem was, how the data was formatted, where it came from, motivations for why this problem is interesting, etc. 
+
+The problem we worked on was to use convolutional neural networks to classify images from the CIFAR-100 dataset. The CIFAR-100 dataset contains 60,000 $32 \times 32$ color images, evenly distributed across 100 classes. Each class consists of 500 training images and 100 testing images. The image data is formatted as a \texttt{numpy} array of \texttt{uint8}s where each row represents a single image. The label data is given as a list of numbers in the range 0-99. \cite{Krizhevsky2009LearningML}
+
+The motivation for this problem is to develop a convolutional architecture that can handle significantly more classes than the 10 classes present in the CIFAR-10 or MNIST datasets. This will be interesting because the 100 classes also fit into 20 superclasses \cite{Krizhevsky2009LearningML}, so many are similar and could be reasonably confused for each other. We will have to train our models to have attention to detail in order to be able to differentiate between similar classes. The goal is for the architectures we develop to be able to classify test images accurately into one of the 100 classes.
+
+\section{Approaches}
+
+% Summarize the approach(es) you used to solve this problem, particularly focusing on the architectures you used ({\bf use figures describing layers and their sizes}), justifying all design decisions. 
+
+For our first architecture we wanted to start small so that we didn't have something unnecessarily complex for the task at hand. This architecture consisted of two blocks with two convolutional layers with max pooling and dropout, followed by one dense layer, and ending with a softmax classification layer.
+
+\noindent\input{Architecture 1 Tikz}
+
+For our second architecture we built upon the first one by adding more filters to our convolutional layers. The purpose of introducing more convolutional layers was to capture more nuanced features in the images.
+
+\noindent\input{Architecture 2 tikz}
+
+\section{Experimental Setup}
+
+% Describe the setup of your experiments  in sufficient detail for the reader to reproduce them.  Include data sources, preprocessing used,  hyperparameter values used ({\bf use a table}), performance measures used, other relevant items (e.g., cross-validation).
+
+The dataset was loaded using \texttt{tensorflow.keras.datasets.cifar100}. For our experiments, the training set was split into 50,000 images for training and 5,000 images for validation, while the test set contained 10,000 images. All images were normalized to the $[0,1]$ range and the labels were converted to one-hot encoding. The training data was shuffled before splitting to ensure randomness. Additionally, data augmentation was applied during training using \texttt{ImageDataGenerator}, including rotations up to $10^\circ$, width and height shifts of up to 8\%, horizontal flips, and zoom of up to 8\%.
+
+Two convolutional neural network (CNN) architectures were tested. Model A is a smaller network with two convolutional blocks, each consisting of two convolutional layers followed by max pooling and dropout. Then there is a single fully connected layer, and the softmax output. Model B is deeper, with three convolutional blocks, each increasing in the number of filters. To prevent overfitting, this network uses higher dropout rates and stronger $L_2$-regularization. Model B also has a larger fully connected layer before the softmax output. 
+
+We conducted experiments with different combinations of optimizers, learning rates, $L_2$-regularization, and dropout. The batch size was fixed at 256, maximum epochs were set to 100, and early stopping with a patience of 5 epochs was used. Table~\ref{tab:hyperparams} summarizes the hyperparameter configurations for each model and run. We used callbacks including early stopping (monitoring validation loss and restoring best weights), reducing learning rate on plateau, and saving the best model with \texttt{ModelCheckpoint}.
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{l l p{2.5cm} l l l l p{3cm}}
+\hline
+\textbf{Model} & \textbf{Run} & \textbf{Optimizer} & \textbf{Learning Rate} & \textbf{L2 Reg} & \textbf{Dropout}   \\
+\hline
+A & 1 & Adam & 0.001 & $1\times10^{-4}$ & 0.2   \\
+A & 2 & SGD (momentum=0.9) & 0.01 & $5\times10^{-4}$ & 0.3  \\
+B & 1 & Adam & 0.001 & $5\times10^{-4}$ & 0.4   \\
+B & 2 & SGD (momentum=0.9) & 0.01 & $1\times10^{-3}$ & 0.5  \\
+\hline
+\end{tabular}
+\caption{Hyperparameters for CIFAR-100 experiments.}
+\label{tab:hyperparams}
+\end{table}
+
+
+All models were compiled with categorical crossentropy loss. The metrics monitored during training included Top-1 accuracy and Top-5 accuracy using \texttt{TopKCategoricalAccuracy(k=5)}. When enabled, data augmentation was applied to the training data. Each model was trained for up to 100 epochs or until early stopping criteria were met, after which the best model weights were restored.
+
+The primary evaluation metrics were Top-1 accuracy, defined as the fraction of samples correctly classified, and Top-5 accuracy, defined as the fraction of samples for which the true label is among the top five predicted probabilities. Ninety-five percent confidence intervals for Top-1 accuracy were computed using the standard normal approximation:
+\[
+\text{CI}_{95\%} = \hat{p} \pm 1.96 \sqrt{\frac{\hat{p}(1-\hat{p})}{n}}
+\]
+where $\hat{p}$ is the observed accuracy and $n$ is the number of test samples. Additionally, confusion matrices were generated for visual inspection, and macro-averaged precision, recall, and F1 scores were reported.
+
+
+
+\section{Experimental Results}
+\label{sec:results}
+
+%Present your results  using tables, figures, confusion matrices, etc.\ (whatever is appropriate, but check the assignment statement for requirements). 
+We tested two different model architectures with two sets of hyperparameters each, for a total of four models.
+
+Architecture 1, described in section 3 above, performed similarly across both sets of hyperparameters. In the case of the first run (i.e., the first set of hyperparameters used), the model was trained for 55 epochs before early stopping halted the training process.  As we used a patience interval of 5, we reverted back to the weights trained through 50 epochs to evaluate on the test set. This model attained a 50.53\% top-1 accuracy on the test set with a 79.45\% top-5 accuracy. Additionally, this model has a 95\%-confidence interval of 49.55-51.51\% for top-1 accuracy. Finally, this model achieved (macro) precision, recall, and F1 scores of 51.48\%, 50.53\%, and 0.4999 respectively. Figure \ref{fig:Model1Run1CM} is this model's confusion matrix.
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{figs/Deep_Learning_HW2_Confusion1.png}
+    \caption{Model 1 Run 1 Confusion Matrix - Note that the chart's title lists the hyperparameters used}
+    \label{fig:Model1Run1CM}
+\end{figure}
+
+For the second run of architechture 1, this time with different hyperparameters, we again trained for a maximum of 100 epochs.  This training run was stopped early after 77 epochs. It attained a top-1 accuracy of 51.37\% and a top-5 accuarcy of 79.04\%, with a 95\%-confidence interval of 50.38\%-52.34\% for top-1 accuracy. This model achieved (macro) precision, recall, and F1 scores of 51.50\%, 51.36\%, and 0.5067, respectively. Figure \ref{fig:Model1Run2CM} is architecture 1, run 2's confusion matrix
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{figs/Deep_Learning_HW2_Confusion2.png}
+    \caption{Model 1 Run 2 Confusion Matrix}
+    \label{fig:Model1Run2CM}
+\end{figure}
+
+Our second architecture was also trained using two different sets of hyperparameters. Again, descriptions of these hyperparameters can be found in section 3. The model trained using the first of these two sets of hyperparameters was stopped early after 70 epochs.  It attained a top-1 accuracy of 45.81\% and a top-5 accuracy of 75.79\%.  Additionally, it has a top-1 accuracy 95\%-confidence interval of 44.83-46.79\%. Finally, it achieved precision, recall, and F1 scores of 46.28\%, 45.81\%, and 0.4491, respectively.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{figs/Deep_Learning_HW2_Confusion3.png}
+    \caption{Model 2 Run 1 Confusion Matrix}
+    \label{fig:Model2Run1CM}
+\end{figure}
+
+Finally, we ran trained a fourth model using our second architecture with a new set of hyperparameters. This model trained for 80 epochs before it was stopped early. It achieved a top-1 accuracy of 56.02\%, a top-5 accuracy of 82.28\%, with a top-1 accuracy 95\% confident interval of 55.05-56.99\%. It also attained precision, recall, and F1 scores of 55.93\%, 56.02\%, and 0.5560, respectively.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{figs/Deep_Learning_HW2_Confusion4.png}
+    \caption{Model 2 Run 2 Confusion Matrix}
+    \label{fig:Model2Run2CM}
+\end{figure}
+
+
+\section{Discussion}
+The first two models performed quite similarly. The changes in optimizer, learning rate, $L_2$-regularization, and dropout rate did not have a strong impact on model performance.  The difference in performance would be much more noticable if the model performed better, but as the top-1 accuracy was only around 50\% in both models, a change of $< 1\%$ in accuracy does not feel like a substantial difference. However, there was a difference in the number of epochs needed to attain relatively similar results.  The model using the Adam optimizer stabilized much more quickly than the model using SGD.
+
+The first model trained with the second architecture was the worst performing of the four models.  This was originally a disappointment, as we had expected (at least slightly) improved performance as we increased the number of layers in the architecture. However, after testing this new architecture with a first set of hyperparameters, the results were disappointing.  It performed worse than a simpler model and took more epochs to train. For this second architecture, we increased our dropout rate, as we had more nodes in this architecture than in the first and were more concerned about overfitting. We had also increased the amount of $L_2$-regularization as a second level of protection against overfitting. Perhaps we were too cautious, as this model third model performed quite poorly. When reviewing this model's performance after each epoch, this model's performance looks quite distinct from those of the other three models. In the other three models, the loss on the validation set is actually lower than the loss on the test set in the early epochs. We believe this is due to the dropout happening in the test data. However, in all three of the other models, early stopping does not occur until the loss on the test data is either equal to or below the loss on the validation set. But in the case of our third model, the loss on the validation set is still much lower than the loss on the test set when early stopping is implemented (see the two figures below). Perhaps we needed an increased patience interval for this model, but is rather unclear to us why this would be so different than architecture 1 run 1, which also used the Adam optimizer.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{figs/Deep_Learning_HW2_Loss.png}
+    \caption{Accuracy and Loss by Epoch - Model 1 Run 1}
+    \label{fig:Model1Loss}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{figs/Deep_Learning_HW2_Loss3.png}
+    \caption{Accuracy and Loss by Epoch - Model 2 Run 1}
+    \label{fig:Model3Loss}
+\end{figure}
+
+While the results of our third model were slightly disappointing, the last model was by far the best performing. This was slightly surprising to us, as the third model (model B, Run 1) performed so poorly. Truthfully, it is slightly mysterious to us why this model saw such an improvement in performance. Our hypothesis is that the second architecture required more epochs to converge, and the higher learning rate in the fourth model allowed it to converge quickly enough before being stopped by early stopping. This conclusion is perhaps supported by the figure below (note how the train/validation loss begin to flatten out twice before continuing downward), but additional testing would be necessary to confirm or deny our suspicions.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{figs/Deep_Learning_HW2_Loss4.png}
+    \caption{Accuracy and Loss by Epoch - Model 2 Run 4}
+    \label{fig:Model4Loss}
+\end{figure}
+%Discuss your experimental results, drawing conclusions that are supported by your experimental results of Section~\ref{sec:results}.  Be careful to not draw conclusions that are not supported by the evidence you present!
+
+\section{Conclusions}
+Convolutional architectures are a reliable, high-performing method for image classification. Even our worst performing model was able to correctly classify images nearly half of the time, an impressive feat when dealing with 100 labels. However, architecture design and hyperparameter selection can significantly impact model performance. In many cases, it isn't entirely clear why small changes seem to have a relatively large impact on performance. This highlights the need for hyperparameter tuning as well as the testing of multiple architectures. In future work, we would like to explore in more detail how the learning rate and $L_2$-regularization can be used to explain the difference in performance between our third and fourth models.  Additionally, we would like to test whether our third model can be improved if given a much longer patience interval.
+%Sum up, including your a summary of your results  (recapitulating that from Section~\ref{sec:intro}).  Also, describe any ideas for future work if you were to continue work on this project.
+
+% Finally, in Table~\ref{tab:contribution}, list each member of your team with a brief summary of that member's contribution to this milestone.
+
+\begin{table}[H]
+    \caption{Contributions by team member for this assignment.}
+    \centering
+    \begin{tabular}{|c|c|} \hline
+    {\bf Team Member}     &  {\bf Contribution}  \\ \hline
+    Abby Veiman     &  Code first draft \\
+    Grace Hecke     &  Code finishing and organizing \\
+    Sabrina Fowler     &  Writeup sections 1-4 \\ 
+    Derek DeBlieck & Writeup sections 5-7, Abstract \\ \hline
+    \end{tabular}
+    \label{tab:contribution}
+\end{table}
+
+
+
+
+\bibliographystyle{plainurl}
+\bibliography{main}
+
+\end{document}

@@ -1,0 +1,206 @@
+
+\begin{tikzpicture}[scale=0.5, every node/.style={transform shape}]
+
+% Input
+\pic[shift={(0,0,0)}] at (0,0,0)
+    {RightBandedBox={
+        name=input,
+        caption=Input\\(32×32×3),
+        fill=\InputColor,
+        height=20,
+        width=0.8,
+        depth=20
+    }
+};
+
+% --- Block 1: 64 filters ---
+\pic[shift={(2.0,0,0)}] at (input-east)
+    {RightBandedBox={
+        name=conv1,
+        caption={\strut Conv2D\\(3×3, 64)},
+        % xlabel={{"64",""}},
+        fill=\ConvColor,
+        bandfill=\ConvReluColor,
+        height=20,
+        width=1.8,
+        depth=20
+    }
+};
+
+\pic[shift={(1.3,0,0)}] at (conv1-east)
+    {RightBandedBox={
+        name=conv2,
+        caption={\strut Conv2D\\(3×3, 64)},
+        fill=\ConvColor,
+        bandfill=\ConvReluColor,
+        height=20,
+        width=1.8,
+        depth=20
+    }
+};
+
+\pic[shift={(1.5,0,0)}] at (conv2-east)
+    {RightBandedBox={
+        name=pool1,
+        caption=MaxPool\\(2×2),
+        fill=\PoolColor,
+        height=10,
+        width=0.8,
+        depth=10
+    }
+};
+
+% Dropout (0.2)
+\pic[shift={(1.3,0,0)}] at (pool1-east)
+    {RightBandedBox={
+        name=drop1,
+        caption=Dropout,
+        fill=gray!20,
+        height=10,
+        width=0.4,
+        depth=10,
+        shift={(0.75,0,0)}
+    }
+};
+
+% --- Block 2: 128 filters ---
+\pic[shift={(2.0,0,0)}] at (drop1-east)
+    {RightBandedBox={
+        name=conv3,
+        caption={\strut Conv2D\\(3×3, 128)},
+        % xlabel={{"128",""}},
+        fill=\ConvColor,
+        bandfill=\ConvReluColor,
+        height=10,
+        width=2.0,
+        depth=10
+    }
+};
+
+\pic[shift={(1.3,0,0)}] at (conv3-east)
+    {RightBandedBox={
+        name=conv4,
+        caption={\strut Conv2D\\(3×3, 128)},
+        fill=\ConvColor,
+        bandfill=\ConvReluColor,
+        height=10,
+        width=2.0,
+        depth=10
+    }
+};
+
+\pic[shift={(1.5,0,0)}] at (conv4-east)
+    {RightBandedBox={
+        name=pool2,
+        caption=MaxPool\\(2×2),
+        fill=\PoolColor,
+        height=5,
+        width=0.8,
+        depth=5
+    }
+};
+
+% Dropout (variable)
+\pic[shift={(1.3,0,0)}] at (pool2-east)
+    {RightBandedBox={
+        name=drop2,
+        caption=Dropout,
+        fill=gray!20,
+        height=5,
+        width=0.4,
+        depth=5,
+        shift={(0.75,0,0)}
+    }
+};
+
+% --- Block 3: 256 filters ---
+\pic[shift={(2.0,0,0)}] at (drop2-east)
+    {RightBandedBox={
+        name=conv5,
+        caption={\strut Conv2D\\(3×3, 256)},
+        % xlabel={{"256",""}},
+        fill=\ConvColor,
+        bandfill=\ConvReluColor,
+        height=5,
+        width=2.2,
+        depth=5
+    }
+};
+
+\pic[shift={(1.5,0,0)}] at (conv5-east)
+    {RightBandedBox={
+        name=pool3,
+        caption=MaxPool\\(2×2),
+        fill=\PoolColor,
+        height=2.5,
+        width=0.8,
+        depth=2.5
+    }
+};
+
+% Flatten
+\pic[shift={(1.8,0,0)}] at (pool3-east)
+    {RightBandedBox={
+        name=flat,
+        caption=Flatten,
+        fill=\FcReluColor,
+        height=0.8,
+        width=0.3,
+        depth=0.8
+    }
+};
+
+% Dense (512)
+\pic[shift={(2.0,0,0)}] at (flat-east)
+    {RightBandedBox={
+        name=dense1,
+        caption=Dense\\(512),
+        % xlabel={{"512",""}},
+        fill=\FcColor,
+        bandfill=\FcReluColor,
+        height=2.0,
+        width=0.8,
+        depth=1.6
+    }
+};
+
+% Dropout after dense
+\pic[shift={(1.5,0,0)}] at (dense1-east)
+    {RightBandedBox={
+        name=drop3,
+        caption=Dropout,
+        fill=gray!20,
+        height=2.0,
+        width=0.4,
+        depth=1.6
+    }
+};
+
+% Output (Softmax 100)
+\pic[shift={(1.8,0,0)}] at (drop3-east)
+    {RightBandedBox={
+        name=output,
+        caption=Softmax\\(100),
+        % xlabel={{"100",""}},
+        fill=\SoftmaxColor,
+        height=1.4,
+        width=0.6,
+        depth=0.8
+    }
+};
+
+% Connections
+\draw [connection] (input-east) -- node {\midarrow} (conv1-west);
+\draw [connection] (conv2-east) -- node {\midarrow} (pool1-west);
+\draw [connection] (pool1-east) -- node {\midarrow} (drop1-west);
+\draw [connection] (drop1-east) -- node {\midarrow} (conv3-west);
+\draw [connection] (conv4-east) -- node {\midarrow} (pool2-west);
+\draw [connection] (pool2-east) -- node {\midarrow} (drop2-west);
+\draw [connection] (drop2-east) -- node {\midarrow} (conv5-west);
+\draw [connection] (conv5-east) -- node {\midarrow} (pool3-west);
+\draw [connection] (pool3-east) -- node {\midarrow} (flat-west);
+\draw [connection] (flat-east) -- node {\midarrow} (dense1-west);
+\draw [connection] (dense1-east) -- node {\midarrow} (drop3-west);
+\draw [connection] (drop3-east) -- node {\midarrow} (output-west);
+
+\end{tikzpicture}
