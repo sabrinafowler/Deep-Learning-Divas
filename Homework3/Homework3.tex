@@ -1,0 +1,206 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{xcolor}
+\usepackage{url}
+\usepackage[nottoc]{tocbibind}
+\usepackage{graphicx}
+\usepackage[bottom]{footmisc}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{hyperref}
+
+
+\title{CSCE 479/879 Homework 3: Sentiment Analysis with Sequential Models}
+\author{Derek DeBlieck, Sabrina Fowler, Grace Hecke, Abby Veiman}
+\date{November 18, 2025}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+    %This is the template you are required to use for each of your homework reports.  It resembles the format of a machine learning research paper, except for the lack of a  related work section. 
+    %At this spot in your report, you should place a brief abstract (4--6 sentences). This is a high-level summary of your work, including a brief summary of the problem, motivation, and your results.
+    
+This report examines binary sentiment classification on the IMDB movie review dataset using two sequential deep-learning architectures: an LSTM and a Transformer. The goal was to compare how their structural differences influence performance, learning behavior, and overfitting. Both models were trained under identical preprocessing, tokenization, and optimization settings. Results showed that while the LSTM provided a strong baseline, the Transformer achieved slightly higher test accuracy and learned more quickly. It also overfit more sharply, with validation accuracy peaking early. Overall, the experiments show clear trade-offs between recurrent and attention-based models in sentiment analysis.
+    
+%{\bf Do not cite any sources in the Abstract, since it is supposed to be self-contained (i.e., it might appear on its own without the References section).}
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+The goal of this assignment was to apply two different sequential deep-learning architectures—an LSTM and a Transformer—to the IMDB sentiment analysis dataset and compare their performance using controlled experimental setups. The problem centers on classifying movie reviews as positive or negative, a well-studied task that remains useful for evaluating how model architecture choices influence real-world text-processing performance. To study this, we trained two configurations of each model type and evaluated them using the same preprocessing pipeline and performance metrics.
+
+% Our first set of observations concerns the test-set accuracy achieved by each configuration. As shown in Figure~\ref{fig:bar}, the LSTM models achieved accuracies of 0.8192 and 0.8078, while the Transformer configurations performed slightly better, reaching 0.8253 and 0.8316. This difference, while not dramatic, reflects the Transformer's strength in capturing long-range dependencies in text compared to recurrent models. \cite{alaparthi2020bert}
+
+% \begin{figure}
+%     \centering
+%     \includegraphics[width=\textwidth]{figs/Test-Set-Accuracy.png}
+%     \caption{Test-set accuracy for all model configurations.}
+%     \label{fig:bar}
+% \end{figure}
+
+% Training behavior also differed across architectures. Figure~\ref{fig:Train} shows that the Transformer models learned faster and reached higher training accuracy than both LSTM configurations, with Transformer Config 1 exceeding 95\% accuracy by the fifth epoch. However, the validation curves in Figure~\ref{fig:Validation} reveal a more nuanced story: both architectures experienced early peaks followed by mild declines, indicating overfitting after the first few epochs. In particular, Transformer Config 1 showed the sharpest drop in validation accuracy despite its strong training performance.
+
+% \begin{figure}
+%     \centering
+%     \includegraphics[width=\textwidth]{figs/Training-Accuracy.png}
+%     \caption{Training accuracy over epochs for all LSTM and Transformer configurations.}
+%     \label{fig:Train}
+% \end{figure}
+
+% \begin{figure}
+%     \centering
+%     \includegraphics[width=\textwidth]{figs/Validation-Accuracy.png}
+%     \caption{Validation accuracy over epochs for all model configurations.}
+%     \label{fig:Validation}
+% \end{figure}
+
+% These observations show that while Transformers provide stronger raw accuracy in this task, they are also more susceptible to overfitting without additional regularization.\cite{alaparthi2020bert} Overall, both architectures produced competitive results, with the best Transformer model achieving the highest test accuracy in our experiments.
+
+%\subsection{\LaTeX\ Bits}
+
+%A few bits on using \LaTeX: 
+%\begin{enumerate}
+%    \item Quoting should {\bf not} use the double quotes character.  Instead, open your quotes with double back quotes: `` and close your quotes with double single (forward) quotes: '' (Look at the \LaTeX\ source file to see what to do.) 
+ %   \item If you're specifying the dimensions of something (e.g., MNIST images), use the correct command: $28 \times 28$.
+  %  \item Use a single dash for a hyphen (e.g., ``single-instance''), a double dash for a range (e.g., ``80--85\%'') and a triple dash for a long dash (e.g., ``we see in Figure~2---which plots accuracy versus training epoch---that ...'')
+%\end{enumerate}
+
+\section{Problem Description}
+
+The task for this project was binary sentiment classification on the IMDB movie review dataset containing 50,000 labeled text reviews, with classes evenly split between positive and negative sentiment.  The learning problem involved determining whether a given review expresses a positive or negative sentiment. Because movie reviews contain a wide range of writing styles as well as informal language, the dataset provides a practical sample for evaluating the strengths and limitations of sequential deep-learning architectures \cite{alaparthi2020bert}.
+
+This problem is particularly interesting from a modeling standpoint because sentiment analysis requires more than counting individual words. Models need to interpret context, handle instances of negation, and track dependencies across long sequences. Traditional recurrent architectures such as LSTMs were built to manage this type of sequential structure, while modern Transformer-based models have shown strong performance across many language tasks thanks to their ability to model relationships between all token positions at once. By training an LSTM and a Transformer on the same dataset under comparable conditions, we can examine how the differences in architecture affect their training behavior, generalization ability, and susceptibility to overfitting. This comparison helps illustrate how model choice influences results in real-world text classification tasks.
+
+\section{Approaches}
+
+In order to see how different sequential architectures handle sentiment classification, we implemented two model families: an LSTM with additive attention and a Transformer block. 
+
+\subsection*{LSTM with Additive Attention}
+
+The first architecture followed a traditional recurrent design but strengthened with an attention mechanism. The model begins with an embedding layer of dimension 128 or 256 (depending on the configuration), followed by a single LSTM layer that returned the full sequence of hidden states. Because the LSTM compresses sequential information over time, we added a \texttt{AdditiveAttention} layer to let the model focus selectively on the most relevant timesteps when forming its final representation. The last LSTM hidden state acted as the query, while the full sequence served as keys and values. After attention pooling, the output passed through a dense sigmoid layer for binary sentiment classification.
+
+Both LSTM configurations incorporated L2 regularization on embeddings, recurrent weights, and the output layer, reflecting the need to control overfitting on relatively short training sequences. The configurations differed primarily in scale with the smaller version using 128-dimensional embeddings and 64 LSTM units, and the larger version doubling both the embedding dimension and LSTM width. The second configuration also reduced the learning rate to account for the increased capacity. These variations allowed us to see how model size influences generalization and learning stability.
+
+\subsection*{Transformer Block}
+
+The second architecture used a simplified Transformer block centered on multi-head self-attention. After an embedding layer, the sequence passed into a custom \texttt{TransformerBlock} consisting of a 4-head \texttt{MultiHeadAttention} layer, a feed-forward network, two layer-normalization steps, and dropout. Unlike the LSTM, which processes tokens sequentially, the Transformer attends to all positions simultaneously, making it more effective at capturing long-range dependencies without relying on an ever-compressed hidden state.
+
+To keep training efficient, this Transformer was intentionally lightweight. The embedding dimension was fixed at 128 in both configurations, and the number of heads was kept at four. The main difference between configurations was the size of the feed-forward network and the dropout rate. After the transformer block, a global average pooling layer reduced the sequence to a fixed-length vector before feeding into a final sigmoid classification layer. This architecture was designed to test whether self-attention alone—not a full multi-layer transformer—could outperform recurrent models on this dataset.
+
+\subsection*{Training Strategy}
+
+All models were trained with the Adam optimizer using binary cross-entropy loss. Batches of 64 reviews were used to speed up training, and early stopping with a patience of five epochs prevented unnecessary overtraining while restoring the best validation checkpoint. By keeping the data pipeline and training procedure identical across models, the comparison isolates the effect of architectural differences rather than preprocessing or optimization factors.
+
+\section{Experimental Setup}
+
+% All experiments were conducted using the IMDB movie review dataset, which contains 50,000 labeled reviews evenly divided into training and test sets. The original training split was further divided into a 90\% training and 10\% validation set to monitor generalization throughout training. Text preprocessing was handled with a Keras TextVectorization layer using a maximum vocabulary size of 10,000 tokens. Each review was converted into a sequence of integer token IDs and then padded or truncated to a fixed length of 128 tokens to standardize input size and allow efficient batching. Labels were kept in their binary form, with 0 indicating a negative review and 1 indicating a positive review. All models were trained using a batch size of 64 and an early stopping mechanism with a patience of five epochs to prevent unnecessary overfitting. Accuracy served as the primary evaluation metric for training, validation, and final testing. Hyperparameters differed across the LSTM and Transformer configurations, with LSTM models varying in embedding dimension, number of LSTM units, regularization strength, and learning rate, while Transformer models differed in feed-forward network size, dropout rate, and learning rate. With these controls in place, the experimental setup ensured that architectural differences were the primary source of variation in performance across the models.
+
+All experiments were carried out using TensorFlow and TensorFlow Datasets with the IMDB movie reviews dataset. To ensure proper separation for model selection, the training portion was further divided into a 90\% training set and a 10\% validation set. 
+
+Before training, all text was processed with a Keras \texttt{TextVectorization} layer adapted only on the training split to avoid data leakage. The vocabulary was limited to the 10,000 most frequent words in the training corpus, and each review was converted into a sequence of integer token IDs. All sequences were padded or truncated to a fixed length of 128 tokens to allow efficient batching and ensure consistent input size across models. After vectorization, the training, validation, and test datasets were batched with a batch size of 64 and configured with prefetching for improved throughput.
+
+Each model was trained for a maximum of fifteen epochs, although early stopping often terminated training sooner. Early stopping monitored validation loss and restored the best-performing weights after five consecutive epochs without improvement. Models were trained using binary cross-entropy loss and optimized with the Adam optimizer. Accuracy was the primary evaluation metric during training, validation, and testing.
+
+\subsection{Model Hyperparameters}
+
+Hyperparameters varied across the four models, primarily in embedding dimension, the size of recurrent or attention components, learning rate, and regularization. Table~\ref{tab:hyperparams} summarizes the key differences between configurations.
+
+\begin{table}[htbp]
+\centering
+\caption{Hyperparameter settings for LSTM and Transformer models}
+\label{tab:hyperparams}
+\begin{tabular}{lcccc}
+\hline
+\textbf{Model} & \textbf{Embedding Dim} & \textbf{Units / FF Dim} & \textbf{Dropout / L2} & \textbf{Learning Rate} \\
+\hline
+LSTM Config 1 & 128 & 64 LSTM units & L2 = 0.0001 & 0.001 \\
+LSTM Config 2 & 256 & 128 LSTM units & L2 = 0.001 & 0.0005 \\
+Transformer Config 1 & 128 & 128 FF & Dropout = 0.3 & 0.001 \\
+Transformer Config 2 & 128 & 256 FF & Dropout = 0.2 & 0.0005 \\
+\hline
+\end{tabular}
+\end{table}
+
+Training and validation accuracy were recorded at each epoch to analyze learning behavior, convergence speed, and the onset of overfitting. After training, each model was evaluated on the held-out test set to determine final classification accuracy. Using consistent preprocessing, data splits, and evaluation procedures ensured that observed differences in performance were attributable to architectural variations rather than inconsistencies in training or data handling.
+
+
+\section{Experimental Results}
+\label{sec:results}
+
+%Present your results  using tables, figures, confusion matrices, etc.\ (whatever is appropriate, but check the assignment statement for requirements). 
+
+Our first set of observations concerns the test-set accuracy achieved by each configuration. As shown in Figure~\ref{fig:bar}, the LSTM models achieved accuracies of 0.8192 and 0.8078, while the Transformer configurations performed slightly better, reaching 0.8253 and 0.8316. This difference, while not dramatic, reflects the Transformer's strength in capturing long-range dependencies in text compared to recurrent models. \cite{alaparthi2020bert}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figs/Test-Set-Accuracy.png}
+    \caption{Test-set accuracy for all model configurations.}
+    \label{fig:bar}
+\end{figure}
+
+
+Training behavior also differed across architectures. Figure~\ref{fig:Train} shows that the Transformer models learned faster and reached higher training accuracy than both LSTM configurations, with Transformer Config 1 exceeding 95\% accuracy by the fifth epoch. However, the validation curves in Figure~\ref{fig:Validation} reveal a more nuanced story: both architectures experienced early peaks followed by mild declines, indicating overfitting after the first few epochs. In particular, Transformer Config 1 showed the sharpest drop in validation accuracy despite its strong training performance.
+
+\begin{figure}[htbp]
+    \centering
+    
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figs/Training-Accuracy.png}
+        \caption{Training accuracy over epochs.}
+        \label{fig:Train}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figs/Validation-Accuracy.png}
+        \caption{Validation accuracy over epochs.}
+        \label{fig:Validation}
+    \end{subfigure}
+
+    \caption{Training and validation accuracy for all model configurations.}
+    \label{fig:TrainVal}
+\end{figure}
+
+These observations show that while Transformers provide stronger raw accuracy in this task, they are also more susceptible to overfitting without additional regularization.\cite{alaparthi2020bert} Overall, both architectures produced competitive results, with the best Transformer model achieving the highest test accuracy in our experiments.
+
+
+\section{Discussion}
+
+% Discuss your experimental results, drawing conclusions that are supported by your experimental results of Section~\ref{sec:results}.  Be careful to not draw conclusions that are not supported by the evidence you present!
+
+The experimental results show clear differences in how the LSTM and Transformer models learned and generalized on the IMDB sentiment classification task. Across all configurations, the Transformer achieved slightly higher peak validation and test accuracy than the LSTM, reflecting its stronger ability to capture long-range dependencies in text. Training curves showed that the Transformer converged more quickly, reaching high accuracy within the first few epochs, while the LSTM was slower it did have steadier improvement. However, the Transformer also displayed more prominant overfitting. Validation loss began to increase even as training loss continued to decrease, and accuracy peaked earlier before gradually declining. The LSTM’s validation metrics remained more stable throughout training, suggesting better regularization under the chosen hyperparameters. These results collectively demonstrate the practical tradeoffs between speed, accuracy, and overfitting when selecting between recurrent and attention based architectures for sentiment analysis.
+
+\section{Conclusions}
+
+The experiments show that both LSTM and Transformer models are effective for binary sentiment classification on the IMDB dataset, but they exhibit different strengths. Our Transformer model reached higher test accuracy and learned more quickly, demonstrating strong capacity for capturing long-range dependencies in text. Our LSTM, while slightly lower in accuracy, maintained steadier validation performance and experienced less sharp overfitting. The comparison across hyperparameter settings also revealed that model size and regularization influence both convergence speed and generalization. These findings highlight that the choice of sequential architecture directly affects learning dynamics, final accuracy, and robustness, and should align with the priorities of the specific task.
+
+% Sum up, including your a summary of your results  (recapitulating that from Section~\ref{sec:intro}).  Also, describe any ideas for future work if you were to continue work on this project.
+
+% Finally, in Table~\ref{tab:contribution}, list each member of your team with a brief summary of that member's contribution to this milestone.
+
+\begin{table}[htbp]
+    \caption{Contributions by team member for this assignment.}
+    \centering
+    \begin{tabular}{|c|c|} \hline
+    {\bf Team Member}     &  {\bf Contribution}  \\ \hline
+    Derek \& Sabrina    &  Code Creation \\
+    Grace \& Abby     &  Write up \\ \hline
+    \end{tabular}
+    \label{tab:contribution}
+\end{table}
+
+\appendix
+
+\section{First Appendix}
+
+%An appendix is used only if necessary (remove this section if you don't use one). It contains supplementary materials/extra details such as extensive experimental results (e.g., hyperparameter search results, where the most interesting ones are in the main text and the rest are dumped here), detailed proofs, etc. 
+
+%Create as many appendices as needed by adding sections. All such sections must be before the references. 
+
+\bibliographystyle{plainurl}
+\bibliography{main}
+
+\end{document}
