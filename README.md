@@ -35,7 +35,7 @@ __Deliverables:__
     - util.py: Helper functions (e.g., for loading the data, small repetitive functions)
 
 ## Homework 3: Sentiment Analysis with Sequential Models
-The assignment for Homework 3 was to apply sequential neural network models to the problem of sentiment analysis on the IMDB dataset, which consists of 50,000 reviews labeled as positive or negative. In particular to design and implement at least two sequential architectures; for each architecture use an attention mechanism and a regularizer, and try at least two settings of hyperparameter values. We were required to employ early stopping in your training, with a minimum patience hyperparameter value of 5.
+The assignment for Homework 3 was to apply sequential neural network models to the problem of sentiment analysis on the IMDB dataset, which consists of 50,000 reviews labeled as positive or negative. In particular to design and implement at least two sequential architectures; for each architecture use an attention mechanism and a regularizer, and try at least two settings of hyperparameter values. We were required to employ early stopping in training, with a minimum patience hyperparameter value of 5.
 
 __Deliverables:__
 1. A single, well written report (in pdf format) discussing results. The pdf should include the experimental setup, results, and conclusions.
