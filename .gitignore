@@ -12,3 +12,8 @@
 *.toc
 *.snm
 *.vrb
+archive/
+*.npy
+Project/corr_ae_checkpoints_contrastive/
+Project/corr_ae_checkpoints_mse/
+Project/cross_modal_checkpoints/
