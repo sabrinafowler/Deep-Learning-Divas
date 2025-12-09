@@ -1,0 +1,438 @@
+\documentclass{beamer}
+
+\usetheme[hideothersubsections]{UNLTheme}
+
+% Suppress overfull hbox warnings from theme logo sizing
+\hfuzz=52pt
+
+
+\title{Multi-Modal\texorpdfstring{\\}{, }Data Retrieval}
+\author{Deep Learning Divas}
+\date{December 10, 2025}
+
+\begin{document}
+
+\begin{frame}
+    \titlepage
+    Derek DeBlieck, Sabrina Fowler, Grace Hecke, Abby Veiman
+\end{frame}
+
+\section{Introduction}
+% define the problem
+% present a "carrot"
+% put in context
+% give outline at the end of the introduction
+
+\begin{frame}
+    \frametitle{The Problem}
+    \begin{itemize}
+        \item How do we search for images using text queries?
+        \begin{itemize}
+            \item Or find relevant captions for a given image?
+        \end{itemize}
+        \item Challenge: Images and text live in different spaces
+        \begin{itemize}
+            \item Images: pixel intensities, visual features
+            \item Text: words, semantic meanings
+        \end{itemize}
+        \item Need: A shared representation to bridge modalities
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Why Does This Matter?}
+    \begin{itemize}
+        \item Real-world applications:
+        \begin{itemize}
+            \item Image search engines
+            \item Content-based retrieval systems
+            \item Accessibility tools for visually impaired users
+        \end{itemize}
+        \item Traditional approach: Treat modalities separately
+        \begin{itemize}
+            \item Limited cross-modal understanding
+        \end{itemize}
+        \item Our opportunity: Modern deep learning enables shared representations
+        \begin{itemize}
+            \item More accurate retrieval
+            \item Better generalization across domains
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Our Solution: Modernizing Correspondence Autoencoders}
+    \begin{itemize}
+        \item Original Corr-AE (Feng et al., 2014)
+        \begin{itemize}
+            \item Used Restricted Boltzmann Machines for feature extraction
+            \item Shared latent space for image and text
+        \end{itemize}
+        \item Our modernized approach:
+        \begin{itemize}
+            \item Replace RBMs with pretrained models:
+            \begin{itemize}
+                \item ResNet-50 for image features
+                \item BERT for text embeddings
+            \end{itemize}
+            \item Compare multiple autoencoder architectures
+            \item Evaluate different alignment loss functions
+        \end{itemize}
+        \item Dataset: Flickr8k (8,000 images, 5 captions each)
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Outline}
+    \begin{enumerate}
+        \item Background \& Related Work
+        \item Methodology
+        \begin{itemize}
+            \item Feature extraction
+            \item Autoencoder architectures
+            \item Loss functions
+        \end{itemize}
+        \item Experimental Results
+        \begin{itemize}
+            \item Performance metrics
+            \item Architecture comparison
+        \end{itemize}
+        \item Conclusions \& Future Work
+    \end{enumerate}
+\end{frame}
+
+% Body: high level summary of key results
+% Technicalities: more depth into a key result
+% Conclusion: review key results, wrap up, give future work
+
+\section{Background \& Methodology}
+
+\begin{frame}
+    \frametitle{Background: Original Corr-AE $\to$ Modern Approach}
+    \begin{itemize}
+        \item Original Corr-AE (Feng et al., 2014)
+        \begin{itemize}
+            \item RBMs for feature extraction
+            \item Shared latent space approach
+        \end{itemize}
+        \item Our modernization
+        \begin{itemize}
+            \item ResNet-50 (pretrained on ImageNet) for images
+            \item BERT (pretrained language model) for text
+            \item Modern features capture richer semantics
+        \end{itemize}
+        \item Dataset: Flickr8k
+        \begin{itemize}
+            \item 8,000 images, 5 captions each
+            \item Split: 70\% train / 15\% val / 15\% test
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Architecture Overview}
+    \begin{itemize}
+        \item Correspondence Autoencoder (Corr-AE) with self-reconstruction:
+        \begin{itemize}
+            \item Image encoder → 512-dim latent → Image decoder
+            \item Text encoder → 512-dim latent → Text decoder
+            \item Shared latent space enforced by alignment loss
+        \end{itemize}
+        \item Two alignment loss functions compared:
+        \begin{enumerate}
+            \item \textbf{MSE Loss:} Direct distance minimization between embeddings
+            \item \textbf{Contrastive Loss:} Positive pairs close, negative pairs far
+        \end{enumerate}
+        \item Key question: Which alignment loss works better?
+        \item Feature extraction:
+        \begin{itemize}
+            \item Image: 2048-dim (ResNet-50) → 512-dim latent
+            \item Text: 768-dim (BERT) → 512-dim latent
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Contrastive Loss: The Winning Approach}
+    \begin{itemize}
+        \item Self-reconstruction with shared latent space
+        \begin{itemize}
+            \item Image encoder → Image decoder
+            \item Text encoder → Text decoder
+            \item \textcolor{red}{Shared 512-dim latent space}
+        \end{itemize}
+        \item Contrastive alignment loss (InfoNCE)
+        \begin{itemize}
+            \item Brings paired embeddings together
+            \item Pushes unpaired embeddings apart
+            \item Temperature parameter $\tau$ controls sharpness
+        \end{itemize}
+        \item Why it outperforms MSE loss:
+        \begin{itemize}
+            \item Better handles negative samples
+            \item More robust to outliers
+        \end{itemize}
+        \item Careful hyperparameter selection is critical
+    \end{itemize}
+\end{frame}
+
+\section{Experimental Results}
+
+\begin{frame}
+    \frametitle{Evaluation Setup}
+    \begin{itemize}
+        \item Task: Image retrieval given text caption
+        \item Metrics:
+        \begin{itemize}
+            \item \textbf{Recall@K:} Top-K retrieval accuracy (K $\in$ \{1, 5, 10\})
+            \item \textbf{Median Rank:} Median position of correct match (lower is better)
+        \end{itemize}
+        \item Training setup:
+        \begin{itemize}
+            \item Optimizer: Adam (lr=5e-4, weight decay=1e-5)
+            \item Batch size: 256, Max epochs: 20
+            \item Z-score normalization (per-modality)
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Quantitative Results}
+    \begin{table}
+        \centering
+        \small
+        \begin{tabular}{lccc}
+            \hline
+            \textbf{Model} & \textbf{Recall@10} & \textbf{Median Rank} \\
+            \hline
+            Corr-AE (MSE) & 24.9\% & 42 \\
+            Corr-AE (Contrastive, Baseline) & 27.7\% & 30 \\
+            \textbf{Corr-AE (Optimized Contrastive)} & \textbf{50.4\%} & \textbf{10} \\
+            \hline
+        \end{tabular}
+    \end{table}
+    \vspace{0.3cm}
+    \begin{itemize}
+        \item \textcolor{red}{\textbf{Contrastive loss + tuning achieves best performance}}
+        \item Hyperparameter tuning proved critical:
+        \begin{itemize}
+            \item Loss weight balancing ($\lambda_{\text{recon}}$, $\lambda_{\text{contrastive}}$)
+            \item Learning rate and temperature ($\tau$) optimization
+            \item Implementing dropout
+        \end{itemize}
+        \item Proper optimization reveals true model capacity
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Qualitative Results: Example Retrieval}
+    \begin{itemize}
+        \item Optimized Corr-AE with contrastive loss
+        \item Task: Retrieve images given text captions from validation set
+        \item Model shows strong semantic understanding:
+        \begin{itemize}
+            \item Correctly matches captions to images
+            \item Top-5 retrieved images are semantically similar
+            \item Captures fine-grained details (objects, scenes, actions)
+        \end{itemize}
+        \item Median rank of 10 indicates most correct images in top-10
+        \item 50.4\% of queries retrieve correct image in top-10
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Qualitative Results: Example Retrieval}
+    Caption: A black and white dog is attempting to catch a yellow and purple object in a low cut yard .
+    \begin{center}
+        \includegraphics[scale=0.4]{retrievalex.png}
+    \end{center}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Key Finding: Loss Function + Hyperparameters Matter}
+    \begin{itemize}
+        \item Contrastive loss outperforms MSE alignment
+        \begin{itemize}
+            \item MSE: 24.9\% Recall@10
+            \item Contrastive (baseline): 27.7\% Recall@10
+            \item Contrastive (optimized): 50.4\% Recall@10
+        \end{itemize}
+        \item Critical hyperparameters for contrastive loss:
+        \begin{itemize}
+            \item Loss weight balance: $\lambda_{\text{contrastive}}$ / $\lambda_{\text{recon}}$
+            \item Contrastive temperature $\tau$
+            \item Dropout and learning rate
+        \end{itemize}
+        \item Main takeaway: Proper loss function choice + tuning is critical
+        \item Contrastive loss better captures semantic alignment
+    \end{itemize}
+\end{frame}
+
+\section{Technicalities}
+
+\begin{frame}
+    \frametitle{Why Does Contrastive Loss Win?}
+    \begin{block}{MSE Alignment Limitations}
+        \begin{itemize}
+            \item Direct L2 distance minimization: $\mathcal{L}_{\text{MSE}} = ||z_{\text{img}} - z_{\text{txt}}||^2$
+            \item Only considers positive pairs (matching image-caption)
+            \item No explicit push against negative pairs
+            \item Sensitive to outliers
+        \end{itemize}
+    \end{block}
+    \begin{block}{Contrastive Loss Advantages}
+        \begin{itemize}
+            \item Pulls positive pairs together, pushes negative pairs apart
+            \item Temperature $\tau$: Controls hardness of negative samples
+            \item More robust optimization landscape
+            \item Better semantic alignment in shared latent space
+        \end{itemize}
+    \end{block}
+    \vspace{0.2cm}
+    Key insight: Negative sample learning is critical for retrieval tasks
+\end{frame}
+
+\section{Ongoing Work \& Future Directions}
+
+\begin{frame}
+    \frametitle{Hyperparameter Optimization Details}
+    \begin{itemize}
+        \item Systematic grid search over:
+        \begin{itemize}
+            \item Loss weights: $\lambda_{\text{recon}} \in$ \{0.5, 1.0, 2.0\}
+            \item Contrastive weight: $\lambda_{\text{contrastive}} \in$ \{0.5, 1.0, 2.0\}
+            \item Temperature: $\tau \in$ \{0.05, 0.07, 0.10\}
+            \item Learning rate: \{5e-4, 1e-3, 2e-3\}
+        \end{itemize}
+        \item Validation set used for selection
+        \item Best configuration: $\lambda_{\text{recon}} = 1.0$, $\lambda_{\text{contrastive}} = 1.0$, $\tau = 0.07$, dropout $= 0.25$, batch size $= 256$, lr $= 5 \times 10^{-4}$
+        \item Demonstrates importance of tuning for correspondence learning
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Future Work}
+    \begin{itemize}
+        \item Bidirectional retrieval
+        \begin{itemize}
+            \item Image → text (5 captions per image)
+        \end{itemize}
+        \item Scale to larger datasets
+        \begin{itemize}
+            \item Flickr30k, MS COCO
+        \end{itemize}
+        \item Compare with state-of-the-art
+        \begin{itemize}
+            \item CLIP, ALIGN
+        \end{itemize}
+        \item Architectural improvements
+        \begin{itemize}
+            \item Attention mechanisms
+            \item Transformer-based encoders
+        \end{itemize}
+        \item Apply to other domains
+        \begin{itemize}
+            \item Medical imaging, audio-text retrieval
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\section{Conclusion}
+
+\begin{frame}
+    \frametitle{Conclusions}
+    \begin{itemize}
+        \item Successfully modernized Corr-AE framework
+        \begin{itemize}
+            \item Replaced RBMs with ResNet-50 and BERT
+        \end{itemize}
+        \item Key result: Optimized Corr-AE achieves \textbf{50.4\% Recall@10}
+        \begin{itemize}
+            \item Median rank of 10
+        \end{itemize}
+        \item Hyperparameter tuning is critical
+        \begin{itemize}
+            \item Proper optimization reveals true model capacity
+        \end{itemize}
+        \item Demonstrates viability of modernized correspondence learning
+        \item Framework applicable to other multimodal retrieval tasks
+    \end{itemize}
+    \vspace{0.5cm}
+    \centering
+    \Large Thank you! Questions?
+\end{frame}
+
+% Backup slides for questions
+
+\begin{frame}
+    \frametitle{Backup: Training Details}
+    \begin{itemize}
+        \item Optimizer: Adam
+        \begin{itemize}
+            \item Learning rate: 5e-4
+            \item Weight decay: 1e-5
+        \end{itemize}
+        \item Batch size: 256
+        \item Max epochs: 20 (with early stopping)
+        \item Normalization: Z-score (per-modality)
+        \begin{itemize}
+            \item Computed on training set
+            \item Applied to all splits
+        \end{itemize}
+        \item Early stopping on validation loss
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Backup: Architecture Specifications}
+    \begin{itemize}
+        \item Image encoder: 2048 → 1024 → 512
+        \item Text encoder: 768 → 512 → 512
+        \item Decoders: Symmetric (reverse of encoders)
+        \item Activations: ReLU between layers
+        \item Loss components:
+        \begin{itemize}
+            \item Reconstruction: MSE
+            \item Alignment: Contrastive (InfoNCE)
+            \item Optimized weights: $\lambda_{\text{recon}} = 1.0$, $\lambda_{\text{contrastive}} = 1.0$
+            \item Temperature ($\tau$): 0.07
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Backup: Full Results Table}
+    \begin{table}
+        \centering
+        \tiny
+        \begin{tabular}{lcccc}
+            \hline
+            \textbf{Model} & \textbf{R@1} & \textbf{R@5} & \textbf{R@10} & \textbf{MedR} \\
+            \hline
+            Corr-AE (MSE) & 5.2\% & 16.7\% & 24.9\% & 42 \\
+            Corr-AE (Contrastive, Baseline) & 5.0\% & 17.4\% & 27.7\% & 30 \\
+            Corr-AE (Optimized Contrastive) & 13.6\% & 37.2\% & 50.4\% & 10 \\
+            \hline
+        \end{tabular}
+    \end{table}
+    \vspace{0.3cm}
+    All metrics on test set (1,214 images, 6,070 captions).
+\end{frame}
+
+\begin{frame}
+    \frametitle{Backup: Hyperparameter Search Space}
+    \begin{itemize}
+        \item Grid search parameters:
+        \begin{itemize}
+            \item Reconstruction loss weight: $\lambda_{\text{recon}} \in$ \{0.5, 1.0, 2.0\}
+            \item Contrastive loss weight: $\lambda_{\text{contrastive}} \in$ \{0.5, 1.0, 2.0\}
+            \item Temperature: $\tau \in$ \{0.05, 0.07, 0.10, 0.15\}
+            \item Learning rate: \{5e-4, 1e-3, 2e-3\}
+        \end{itemize}
+        \item Total configurations explored: 11
+        \item Selection criterion: Best validation Recall@10
+        \item Computational cost: ~40-60 minutes total on M4 Mac CPU (2-3 sec/epoch × 20 epochs × 11 configs)
+    \end{itemize}
+\end{frame}
+
+\end{document}
